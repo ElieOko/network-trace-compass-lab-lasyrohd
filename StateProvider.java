@@ -126,7 +126,7 @@ public class StateProvider extends AbstractTmfStateProvider {
             socketConnexion.shutdown(event,getStateSystemBuilder());
             break;
         default:
-            System.out.print("***Other Event***");
+            System.out.println("***Other Event***");
             break;
         }
     }
