@@ -95,9 +95,9 @@ public class StateProvider extends AbstractTmfStateProvider {
         case e_entry_write,e_exit_write:
             socketConnexion.write(event, getStateSystemBuilder());
             break;
-//        case e_entry_bind,e_exit_bind:
-//             obj = socketConnexion.bind(event,getStateSystemBuilder(),maps);
-//            break;
+        case e_entry_bind,e_exit_bind:
+            socketConnexion.bind(event,getStateSystemBuilder(),maps);
+            break;
         case e_entry_accept,e_exit_accept,e_entry_accept4,e_exit_accept4:
             socketConnexion.accept(event,getStateSystemBuilder(),maps);
             break;
