@@ -28,7 +28,6 @@ public class StateProvider extends AbstractTmfStateProvider {
     private static final int VERSION = 0;
     static  Map<Integer, SocketParams> maps = new HashMap<>();
     static SocketParams socketObj;
-    //private final Map<Integer, ICTFStream> cSocket = new HashMap<>();
     private static final String e_entry_socket       = "syscall_entry_socket";//$NON-NLS-1$
     private static final String e_entry_write        = "syscall_entry_write";//$NON-NLS-1$
     private static final String e_exit_write         = "syscall_exit_write";//$NON-NLS-1$
@@ -52,6 +51,7 @@ public class StateProvider extends AbstractTmfStateProvider {
     private static final String e_entry_sendmsg      = "syscall_entry_sendmsg";//$NON-NLS-1$
     private static final String e_exit_sendmsg       = "syscall_exit_sendmsg";//$NON-NLS-1$
     private static final String e_entry_recvmsg      = "syscall_entry_recvmsg";//$NON-NLS-1$
+    private static final String e_exit_recvmsg      = "syscall_exit_recvmsg";//$NON-NLS-1$
     private static final String e_entry_close        = "syscall_entry_close";//$NON-NLS-1$
     private static final String e_exit_close         = "syscall_exit_close";//$NON-NLS-1$
     private static final String e_entry_shutdown     = "syscall_entry_shutdown";//$NON-NLS-1$
@@ -87,7 +87,7 @@ public class StateProvider extends AbstractTmfStateProvider {
         SocketService socketConnexion = new SocketService();
         switch(event.getName()) {
         case e_entry_socket,e_exit_socket:
-            socketConnexion.socket(event,getStateSystemBuilder(),maps);
+            socketConnexion.socket(event,getStateSystemBuilder());
             break;
         case e_entry_getsockopt,e_exit_getsockopt:
             socketConnexion.fetch_socket_option(event,getStateSystemBuilder());
@@ -96,53 +96,38 @@ public class StateProvider extends AbstractTmfStateProvider {
             socketConnexion.write(event, getStateSystemBuilder());
             break;
         case e_entry_bind,e_exit_bind:
-            socketConnexion.bind(event,getStateSystemBuilder(),maps);
+            socketConnexion.bind(event,getStateSystemBuilder());
             break;
         case e_entry_accept,e_exit_accept,e_entry_accept4,e_exit_accept4:
             socketConnexion.accept(event,getStateSystemBuilder(),maps);
             break;
-//        case e_entry_listen,e_exit_listen:
-//            obj = socketConnexion.listen(event,getStateSystemBuilder(),maps);
-//          break;
-        case e_entry_connect,e_exit_connect :{
-            System.out.println(event.getName());
-            //System.out.println(maps.size());
-            socketConnexion.connect(event,getStateSystemBuilder(),maps);
+        case e_entry_listen,e_exit_listen:
+            socketConnexion.listen(event,getStateSystemBuilder());
             break;
-        }
-//
-        case e_entry_setsockopt,e_exit_setsockopt:{
+        case e_entry_connect,e_exit_connect :
+            socketConnexion.connect(event,getStateSystemBuilder());
+            break;
+        case e_entry_setsockopt,e_exit_setsockopt:
             socketConnexion.config_socket_option(event,getStateSystemBuilder());
             break;
-        }
-
-        case e_entry_read,e_exit_read:{
+        case e_entry_read,e_exit_read:
             socketConnexion.read(event,getStateSystemBuilder());
             break;
-        }
-
-
-//        case e_entry_getsockopt,e_exit_getsockopt:
-//            obj = socketConnexion.fetch_socket_option(event,getStateSystemBuilder(),maps);
-
-//            break;
-//        case e_entry_sendmsg,e_exit_sendmsg:
-//            obj = socketConnexion.sendmsg(event,getStateSystemBuilder(),maps);
-
-//            break;
+        case e_entry_sendmsg,e_exit_sendmsg:
+            socketConnexion.sendmsg(event,getStateSystemBuilder());
+            break;
+        case e_entry_recvmsg,e_exit_recvmsg:
+            socketConnexion.recvmsg(event,getStateSystemBuilder());
+            break;
         case e_entry_close,e_exit_close:
-           socketConnexion.close(event,getStateSystemBuilder());
-       break;
-         default:
-//             System.out.print("*******************TEST****************");
-             break;
+            socketConnexion.close(event,getStateSystemBuilder());
+            break;
+        case e_entry_shutdown,e_exit_shutdown:
+            socketConnexion.shutdown(event,getStateSystemBuilder());
+            break;
+        default:
+            System.out.print("***Other Event***");
+            break;
         }
-
-
     }
-
-   public void eventSocketMain() {
-
-   }
-
 }
