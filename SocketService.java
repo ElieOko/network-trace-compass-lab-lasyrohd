@@ -26,8 +26,8 @@ public class SocketService  {
    private static final String e_exit_listen        = "syscall_exit_listen";//$NON-NLS-1$
    private static final String e_entry_accept       = "syscall_entry_accept";//$NON-NLS-1$
    private static final String e_exit_accept        = "syscall_exit_accept";//$NON-NLS-1$
-   private static final String e_entry_accept4       = "syscall_entry_accept4";//$NON-NLS-1$
-   private static final String e_exit_accept4       = "syscall_entry_accept4";//$NON-NLS-1$
+   private static final String e_entry_accept4      = "syscall_entry_accept4";//$NON-NLS-1$
+   private static final String e_exit_accept4       = "syscall_exit_accept4";//$NON-NLS-1$
    private static final String e_entry_connect      = "syscall_entry_connect";//$NON-NLS-1$
    private static final String e_exit_connect       = "syscall_exit_connect";//$NON-NLS-1$
    private static final String e_entry_setsockopt   = "syscall_entry_setsockopt";//$NON-NLS-1$
@@ -406,7 +406,6 @@ public SocketParams accept(ITmfEvent event,@Nullable ITmfStateSystemBuilder buil
       if(event.getName().equals(e_entry_bind)) {
           final long ts = event.getTimestamp().getValue();
           Integer fd = event.getContent().getFieldValue(Integer.class, "fd"); //$NON-NLS-1$
-
           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
           if (cpu == null || fd == null) {
               return null;
@@ -414,25 +413,34 @@ public SocketParams accept(ITmfEvent event,@Nullable ITmfStateSystemBuilder buil
           socketAllValue.fd = fd;
           socketAllValue.cpu = cpu;
           ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
-          int quark = ss.getQuarkAbsoluteAndAdd("bind"); //$NON-NLS-1$
-          // The main quark contains the tid of the running thread
-          int quarkfd = ss.getQuarkRelativeAndAdd(quark,String.valueOf(fd));
-          ss.modifyAttribute(ts, "bind", quarkfd);
-
+          int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
+          int quark_server = ss.getQuarkRelativeAndAdd(quark,"server");//$NON-NLS-1$
+          int quark_store = ss.getQuarkRelativeAndAdd(quark_server,"store");//$NON-NLS-1$
+          int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
+          int quark_store_fd_cpu= ss.getQuarkRelativeAndAdd(quark_server, "fd",String.valueOf(fd));//$NON-NLS-1$
+          int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf( cpu));//$NON-NLS-1$
+          ss.modifyAttribute(ts, cpu, quark_store_fd_cpu);
+          ss.modifyAttribute(ts, fd, quark_store_cpu_fd);
+          int quark_fd= ss.getQuarkRelativeAndAdd(quark_server,String.valueOf(fd));
+          ss.modifyAttribute(ts, "bind", quark_fd);//$NON-NLS-1$
       }
       if(event.getName().equals(e_exit_bind)) {
-
           final long ts = event.getTimestamp().getValue();
           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
-          var sock  =socketValue.get(cpu);
-          if(sock != null) {
-              socketAllValue.isActive = false;
-              socketAllValue.cpu = cpu;
-                ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
-                int quark = ss.getQuarkAbsoluteAndAdd("bind"); //$NON-NLS-1$
-                int quark2 = ss.getQuarkRelativeAndAdd(quark,String.valueOf(sock.fd));
-                Integer value = (sock.fd > 0 ? 1 : 0);
-                ss.modifyAttribute(ts, value, quark2);
+          socketAllValue.isActive = false;
+          socketAllValue.cpu = cpu;
+          ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
+          int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
+          int quark_server = ss.getQuarkRelativeAndAdd(quark,"server");//$NON-NLS-1$
+          int quark_store = ss.getQuarkRelativeAndAdd(quark_server,"store");//$NON-NLS-1$
+          int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
+          int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf(cpu));//$NON-NLS-1$
+          Integer r_fd= (Integer)ss.queryOngoing(quark_store_cpu_fd);
+          System.out.println("##################################->"+quark_store_cpu_fd);
+          if(r_fd != null) {
+             System.out.println("##################################->"+r_fd);
+             int quark2 = ss.getQuarkRelativeAndAdd(quark_server,String.valueOf(r_fd));
+             ss.modifyAttribute(ts, null, quark2);
           }
       }
 
