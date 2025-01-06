@@ -14,7 +14,7 @@ class SocketParams {
     public Getsockopt  getsockopt;
     public Sendmsg     sendmsg;
     public Recvmsg     recvmsg;
-    public Boolean     isActive             = true;
+    public Boolean     isActive             = false;
 
 }
 
@@ -39,6 +39,18 @@ class Socket{
 
     public Integer getProtocol() {
         return this.protocol;
+    }
+
+    public void setFamily(Integer _family) {
+        this.family = _family;
+    }
+
+    public void setType(Integer _type) {
+        this.type = _type;
+    }
+
+    public void setProtocol(Integer _protocol) {
+        this.protocol = _protocol;
     }
 }
 
