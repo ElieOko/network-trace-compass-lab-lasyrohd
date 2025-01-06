@@ -34,6 +34,8 @@ public class SocketService  {
    private static final String e_exit_setsockopt    = "syscall_exit_setsockopt";//$NON-NLS-1$
    private static final String e_entry_getsockopt   = "syscall_entry_getsockopt";//$NON-NLS-1$
    private static final String e_exit_getsockopt    = "syscall_exit_getsockopt";//$NON-NLS-1$
+   private static final String e_entry_getsockname  = "syscall_entry_getsockname";//$NON-NLS-1$
+   private static final String e_exit_getsockname   = "syscall_exit_getsockname";//$NON-NLS-1$
    private static final String e_entry_sendmsg      = "syscall_entry_sendmsg";//$NON-NLS-1$
    private static final String e_exit_sendmsg       = "syscall_exit_sendmsg";//$NON-NLS-1$
    private static final String e_entry_recvmsg      = "syscall_entry_recvmsg";//$NON-NLS-1$
@@ -42,6 +44,9 @@ public class SocketService  {
    private static final String e_exit_close         = "syscall_exit_close";//$NON-NLS-1$
    private static final String e_entry_shutdown     = "syscall_entry_shutdown";//$NON-NLS-1$
    private static final String e_exit_shutdown      = "syscall_exit_shutdown";//$NON-NLS-1$
+   private static final String e_exit_fcntl         = "syscall_exit_fcntl";//$NON-NLS-1$
+   private static final String e_entry_fcntl        = "syscall_entry_fcntl";//$NON-NLS-1$
+
    static SocketParams socketAllValue = new SocketParams();
    /****
     * **
@@ -120,15 +125,19 @@ public class SocketService  {
         }
    }
    @SuppressWarnings("javadoc")
-   public SocketParams socket(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder) {
+   public SocketParams socket(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder,Boolean isServer) {
        if(event.getName().equals(e_entry_socket)) {
+          if(isServer) {
+              //System.out.println("****ekoti********Bind******ekoti*****");
+          }
           final long ts = event.getTimestamp().getValue();
           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
           socketAllValue.cpu = cpu;
           ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
           int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
-          int quark_client = ss.getQuarkRelativeAndAdd(quark,"client");//$NON-NLS-1$
-          int quark_store = ss.getQuarkRelativeAndAdd(quark_client,"store");//$NON-NLS-1$
+         // int quark_client = ss.getQuarkRelativeAndAdd(quark,"client");//$NON-NLS-1$
+
+          int quark_store = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
           int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
           int quark_store_value_ts= ss.getQuarkRelativeAndAdd(quark_store_value, "ts");//$NON-NLS-1$
           ss.modifyAttribute(ts, ts, quark_store_value_ts);
@@ -142,8 +151,8 @@ public class SocketService  {
               socketAllValue.cpu = cpu;
               ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
               int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
-              int quark_client = ss.getQuarkRelativeAndAdd(quark,"client");//$NON-NLS-1$
-              int quark_store = ss.getQuarkRelativeAndAdd(quark_client,"store");//$NON-NLS-1$
+              //int quark_client = ss.getQuarkRelativeAndAdd(quark,"client " + ret);//$NON-NLS-1$
+              int quark_store = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
               int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
               int quark_store_value_cpu= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf(cpu));//$NON-NLS-1$
               int quark_store_value_cpu_ret= ss.getQuarkRelativeAndAdd(quark_store_value_cpu,"ret",String.valueOf(ret));//$NON-NLS-1$
@@ -153,7 +162,8 @@ public class SocketService  {
               ss.modifyAttribute(ts, ret, quark_store_value_cpu_ret);
               Integer r_ret= (Integer)ss.queryOngoing(quark_store_value_cpu_ret);
               if(r_ret != null && r_ts != null) {
-                 int quark2 = ss.getQuarkRelativeAndAdd(quark_client,String.valueOf(r_ret));
+                 socketAllValue.fd = ret;
+                 int quark2 = ss.getQuarkRelativeAndAdd(quark,"client " + ret);//$NON-NLS-1$
                  ss.modifyAttribute(r_ts,"socket creation",quark2 );//$NON-NLS-1$
                  ss.modifyAttribute(ts,null, quark2);
                }
@@ -161,6 +171,55 @@ public class SocketService  {
            }
        return socketAllValue;
    }
+
+
+   @SuppressWarnings("javadoc")
+   public void fcntl(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder) {
+
+       if(event.getName().equals(e_entry_fcntl)) {
+           final long ts = event.getTimestamp().getValue();
+           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
+           ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
+           Integer fd = event.getContent().getFieldValue(Integer.class, "fd"); //$NON-NLS-1$
+           if(cpu != null || fd != null) {
+               int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
+               //int quark_client = ss.getQuarkRelativeAndAdd(quark,"client " + fd);//$NON-NLS-1$
+               int quark_store = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
+               int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
+               int quark_store_fd_cpu= ss.getQuarkRelativeAndAdd(quark_store_value, "fd",String.valueOf(fd));//$NON-NLS-1$
+               int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf(cpu));//$NON-NLS-1$
+               ss.modifyAttribute(ts, cpu, quark_store_fd_cpu);
+               ss.modifyAttribute(ts, fd, quark_store_cpu_fd);
+               int quark_fd= ss.getQuarkRelativeAndAdd(quark,"client " + fd);//$NON-NLS-1$
+               ss.modifyAttribute(ts, "fcntl", quark_fd);//$NON-NLS-1$
+           }
+       }
+
+       if(event.getName().equals(e_exit_fcntl)) {
+           final long ts = event.getTimestamp().getValue();
+           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
+           socketAllValue.isActive = false;
+           socketAllValue.cpu = cpu;
+           ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
+           int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
+           int quark_store = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
+           int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
+           int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf(cpu));//$NON-NLS-1$
+           Integer r_fd= (Integer)ss.queryOngoing(quark_store_cpu_fd);
+          // int quark_client = ss.getQuarkRelativeAndAdd(quark,"client " + r_fd);//$NON-NLS-1$
+          // System.out.println("@@@@@napesi bino@@@@ =>"+r_fd);//$NON-NLS-1$
+           if(r_fd != null) {
+              // System.out.println("****enter->exit");//$NON-NLS-1$
+             int quark2 = ss.getQuarkRelativeAndAdd(quark,"client " + r_fd);//$NON-NLS-1$
+             ss.modifyAttribute(ts, null, quark2);
+           }
+       }
+   }
+
+
+
+
+
    @SuppressWarnings("javadoc")
    public SocketParams connect(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder) {
 
@@ -175,14 +234,14 @@ public class SocketService  {
            socketAllValue.cpu = cpu;
            ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
            int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
-           int quark_client = ss.getQuarkRelativeAndAdd(quark,"client");//$NON-NLS-1$
-           int quark_store = ss.getQuarkRelativeAndAdd(quark_client,"store");//$NON-NLS-1$
+           //int quark_client = ss.getQuarkRelativeAndAdd(quark,"client "+fd);//$NON-NLS-1$
+           int quark_store  = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
            int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
-           int quark_store_fd_cpu= ss.getQuarkRelativeAndAdd(quark_client, "fd",String.valueOf(fd));//$NON-NLS-1$
+           int quark_client_fd = ss.getQuarkRelativeAndAdd(quark_store, "fd",String.valueOf(fd));//$NON-NLS-1$
            int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf( cpu));//$NON-NLS-1$
-           ss.modifyAttribute(ts, cpu, quark_store_fd_cpu);
+           ss.modifyAttribute(ts, cpu, quark_client_fd);
            ss.modifyAttribute(ts, fd, quark_store_cpu_fd);
-           int quark_fd= ss.getQuarkRelativeAndAdd(quark_client,String.valueOf(fd));
+           int quark_fd= ss.getQuarkRelativeAndAdd(quark,"client "+fd);//$NON-NLS-1$
            ss.modifyAttribute(ts, "connection", quark_fd);//$NON-NLS-1$
        }
 
@@ -193,17 +252,55 @@ public class SocketService  {
            socketAllValue.cpu = cpu;
            ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
            int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
-           int quark_client = ss.getQuarkRelativeAndAdd(quark,"client");//$NON-NLS-1$
-           int quark_store = ss.getQuarkRelativeAndAdd(quark_client,"store");//$NON-NLS-1$
+           int quark_store = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
            int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
            int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf(cpu));//$NON-NLS-1$
            Integer r_fd= (Integer)ss.queryOngoing(quark_store_cpu_fd);
+           //int quark_client = ss.getQuarkRelativeAndAdd(quark,"client " + r_fd);//$NON-NLS-1$
            if(r_fd != null) {
-             int quark2 = ss.getQuarkRelativeAndAdd(quark_client,String.valueOf(r_fd));
+             int quark2 = ss.getQuarkRelativeAndAdd(quark,"client " + r_fd);//$NON-NLS-1$
              ss.modifyAttribute(ts, null, quark2);
            }
        }
         return socketAllValue;
+   }
+
+   @SuppressWarnings("javadoc")
+   public void getsockname(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder) {
+       if(event.getName().equals(e_entry_getsockname)) {
+           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
+           final long ts = event.getTimestamp().getValue();
+           Integer fd = event.getContent().getFieldValue(Integer.class, "fd"); //$NON-NLS-1$
+           ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
+           int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
+           //int quark_client = ss.getQuarkRelativeAndAdd(quark,"client " + fd);
+           int quark_store  = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
+           int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
+           int quark_client_fd = ss.getQuarkRelativeAndAdd(quark_store_value, "fd",String.valueOf(fd));//$NON-NLS-1$
+           int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf( cpu));//$NON-NLS-1$
+           ss.modifyAttribute(ts, cpu, quark_client_fd);
+           ss.modifyAttribute(ts, fd, quark_store_cpu_fd);
+           int quark_fd= ss.getQuarkRelativeAndAdd(quark,"client " + fd);//$NON-NLS-1$
+           ss.modifyAttribute(ts, "getsockname", quark_fd);//$NON-NLS-1$
+           }
+
+       if(event.getName().equals(e_exit_getsockname)) {
+           final long ts = event.getTimestamp().getValue();
+           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
+           socketAllValue.isActive = false;
+           socketAllValue.cpu = cpu;
+           ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
+           int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
+           int quark_store = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
+           int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
+           int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf(cpu));//$NON-NLS-1$
+           Integer r_fd= (Integer)ss.queryOngoing(quark_store_cpu_fd);
+           //int quark_client = ss.getQuarkRelativeAndAdd(quark,"client " + r_fd);//$NON-NLS-1$
+           if(r_fd != null) {
+             int quark2 = ss.getQuarkRelativeAndAdd(quark,"client " + r_fd);//$NON-NLS-1$
+             ss.modifyAttribute(ts, null, quark2);
+           }
+       }
    }
    @SuppressWarnings("javadoc")
    public SocketParams config_socket_option(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder) {
@@ -418,9 +515,10 @@ public class SocketService  {
       return socketAllValue;
   }
    @SuppressWarnings("javadoc")
-   public SocketParams bind(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder) {
+   public SocketParams bind(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder,Map<Integer, SocketParams> socketValue) {
 
       if(event.getName().equals(e_entry_bind)) {
+          System.out.println("BIND -> sys call");
           final long ts = event.getTimestamp().getValue();
           Integer fd = event.getContent().getFieldValue(Integer.class, "fd"); //$NON-NLS-1$
           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
@@ -429,35 +527,47 @@ public class SocketService  {
           }
           socketAllValue.fd = fd;
           socketAllValue.cpu = cpu;
+          socketAllValue.isActive = true;
           ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
           int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
-          int quark_server = ss.getQuarkRelativeAndAdd(quark,"server");//$NON-NLS-1$
-          int quark_store = ss.getQuarkRelativeAndAdd(quark_server,"store");//$NON-NLS-1$
+          int quark_client = ss.getQuarkRelativeAndAdd(quark,"client " + fd);//$NON-NLS-1$
+          int quark_store = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
           int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
-          int quark_store_fd_cpu= ss.getQuarkRelativeAndAdd(quark_server, "fd",String.valueOf(fd));//$NON-NLS-1$
+         // int quark_store_fd_cpu= ss.getQuarkRelativeAndAdd(quark_server, "fd",String.valueOf(fd));//$NON-NLS-1$
           int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf( cpu));//$NON-NLS-1$
-          ss.modifyAttribute(ts, cpu, quark_store_fd_cpu);
+          int quark_store_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"fd",String.valueOf(fd));//$NON-NLS-1$
+          ss.modifyAttribute(ts, cpu, quark_store_fd);
           ss.modifyAttribute(ts, fd, quark_store_cpu_fd);
-          int quark_fd= ss.getQuarkRelativeAndAdd(quark_server,String.valueOf(fd));
-          ss.modifyAttribute(ts, "bind", quark_fd);//$NON-NLS-1$
+          Integer r_fd= (Integer)ss.queryOngoing(quark_store_cpu_fd);
+
+          //int quark_fd_client= ss.getQuarkRelativeAndAdd(quark_client,String.valueOf(fd));
+
+          int quark_server = ss.getQuarkRelativeAndAdd(quark_client,"server " + r_fd);//$NON-NLS-1$
+          //int quark_fd= ss.getQuarkRelativeAndAdd(quark_server,String.valueOf(fd));
+          System.out.println("->>>>>>"+r_fd);
+          ss.modifyAttribute(ts, "bind", quark_server);//$NON-NLS-1$
+
       }
       if(event.getName().equals(e_exit_bind)) {
           final long ts = event.getTimestamp().getValue();
           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
-          socketAllValue.isActive = false;
+          socketAllValue.isActive = true;
           socketAllValue.cpu = cpu;
           ITmfStateSystemBuilder ss = Objects.requireNonNull(builder);
           int quark = ss.getQuarkAbsoluteAndAdd("connection"); //$NON-NLS-1$
-          int quark_server = ss.getQuarkRelativeAndAdd(quark,"server");//$NON-NLS-1$
-          int quark_store = ss.getQuarkRelativeAndAdd(quark_server,"store");//$NON-NLS-1$
+
+          int quark_store = ss.getQuarkRelativeAndAdd(quark,"store");//$NON-NLS-1$
           int quark_store_value= ss.getQuarkRelativeAndAdd(quark_store, "value");//$NON-NLS-1$
           int quark_store_cpu_fd= ss.getQuarkRelativeAndAdd(quark_store_value,"cpu",String.valueOf(cpu));//$NON-NLS-1$
           Integer r_fd= (Integer)ss.queryOngoing(quark_store_cpu_fd);
+          int quark_client = ss.getQuarkRelativeAndAdd(quark,"client " + r_fd);//$NON-NLS-1$
+          //int quark_server = ss.getQuarkRelativeAndAdd(quark_client,"server " + r_fd);//$NON-NLS-1$
           if(r_fd != null) {
-             int quark2 = ss.getQuarkRelativeAndAdd(quark_server,String.valueOf(r_fd));
+             int quark2 = ss.getQuarkRelativeAndAdd(quark_client,"server " + r_fd);//$NON-NLS-1$
              ss.modifyAttribute(ts, null, quark2);
           }
       }
+      System.out.println("**********=>"+socketValue.size());//$NON-NLS-1$
 
       return socketAllValue;
 }
@@ -585,5 +695,53 @@ public class SocketService  {
      }
    return socketAllValue;
 }
+   @SuppressWarnings("javadoc")
+   public void netdev(ITmfEvent event,@Nullable ITmfStateSystemBuilder builder) {
+
+       if(event.getName().equals("net_dev_queue")) {
+           Integer cpu = TmfTraceUtils.resolveIntEventAspectOfClassForEvent(event.getTrace(), TmfCpuAspect.class, event);
+           String network = event.getContent().getFieldValue(String.class, "network_header"); //$NON-NLS-1$
+           String network_type = event.getContent().getFieldValue(String.class, "network_header_type"); //$NON-NLS-1$
+           if(network_type != null) {
+               if(network_type.equals("_ipv4") ) {
+                  // System.out.println(network_type);
+                   if(network != null) {
+                       int index = network.indexOf("transport_header=tcp=[");
+                       int indexSaddr = network.indexOf("saddr=[");
+                       if(index != -1) {
+                           String header_net = network.substring(index + "transport_header=tcp=[".length());
+                           int i_port = network.indexOf("source_port=");
+                           String source_port = (network.substring(i_port + "source_port=".length())).split(",")[0];
+                           int i_port_dest = network.indexOf("dest_port=");
+                           String dest_port = (network.substring(i_port_dest + "dest_port=".length())).split(",")[0];
+                           if(dest_port.equals("8500")) {
+                               if (indexSaddr != -1) {
+                                   header_net = network.substring(indexSaddr +"saddr=[".length());
+                                   System.out.println("********SADDR********");
+                                   String extractedPart = header_net.substring(0, header_net.indexOf("],"));
+                                   System.out.println(extractedPart);
+                               }
+                               System.out.println("Destination Port " + dest_port);
+                               System.out.println("Source Port " + source_port);
+
+                           }
+
+                           }
+
+
+               }
+           }
+
+
+
+//               String[] parts = network.split(",");
+             //  System.out.println(network.);
+//               System.out.println(parts[1]);
+//               System.out.println(parts[2]);
+           }
+
+       }
+
+   }
 
 }
